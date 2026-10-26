@@ -258,8 +258,8 @@ steam_sync() {
     launch_command="run net.retrodeck.retrodeck"
     startIn=""
   elif [[ "$steam_mode" == "flatpak" ]]; then
-    target="flatpak-spawn --host"
-    launch_command="flatpak run net.retrodeck.retrodeck"
+    target="/usr/bin/flatpak-spawn"
+    launch_command="--host flatpak run net.retrodeck.retrodeck"
     startIn=""
   else # Fallback to legacy default behavior
     target="flatpak"
