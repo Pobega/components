@@ -306,17 +306,19 @@ get_steam_user() {
   local mode="${1:-}"
   local current_steam_sync_setting="$(get_component_option "steam-rom-manager" "steam_sync")"
   if [[ "$current_steam_sync_setting" != "false" || "$mode" =~ (get_type|manual) ]]; then # Only grab Steam information if Steam Sync is enabled or if otherwise overridden
-    local srm_rd_manifest_target
+    local srm_rd_manifest_target srm_rd_manifest_launch_options
     if [[ "$current_steam_sync_setting" == "native" ]]; then
       export srm_steam_userdata_current="$srm_steam_userdata_native"
       srm_rd_manifest_target="flatpak"
+      srm_rd_manifest_launch_options="run net.retrodeck.retrodeck"
       if [[ "$mode" == "get_type" ]]; then
         echo "$current_steam_sync_setting"
         return 0
       fi
     elif [[ "$current_steam_sync_setting" == "flatpak" ]]; then
       export srm_steam_userdata_current="$srm_steam_userdata_flatpak"
-      srm_rd_manifest_target="flatpak-spawn --host"
+      srm_rd_manifest_target="/usr/bin/flatpak-spawn"
+      srm_rd_manifest_launch_options="--host flatpak run net.retrodeck.retrodeck"
       if [[ "$mode" == "get_type" ]]; then
         echo "$current_steam_sync_setting"
         return 0
@@ -328,12 +330,16 @@ get_steam_user() {
           return 0
         fi
         export srm_steam_userdata_current="$srm_steam_userdata_native"
+        srm_rd_manifest_target="flatpak"
+        srm_rd_manifest_launch_options="run net.retrodeck.retrodeck"
       elif [[ -d "$srm_steam_userdata_flatpak" ]]; then
         if [[ "$mode" == "get_type" ]]; then
           echo "flatpak"
           return 0
         fi
         export srm_steam_userdata_current="$srm_steam_userdata_flatpak"
+        srm_rd_manifest_target="/usr/bin/flatpak-spawn"
+        srm_rd_manifest_launch_options="--host flatpak run net.retrodeck.retrodeck"
       else
         log d "No Steam userdata information could be found."
         return 1
@@ -372,8 +378,9 @@ get_steam_user() {
 
       log i "Updating launch target in $srm_userdata/manifests/RetroDECK.json"
       local srm_rd_manifest_temp=$(mktemp)
-      jq --arg target "$srm_rd_manifest_target" '
-        .target = $target
+      jq --arg target "$srm_rd_manifest_target" --arg launch_options "$srm_rd_manifest_launch_options" '
+        .target = $target |
+        .launchOptions = $launch_options
       ' "$srm_userdata/manifests/RetroDECK.json" > "$srm_rd_manifest_temp" && mv -f "$srm_rd_manifest_temp" "$srm_userdata/manifests/RetroDECK.json"
 
       if ! populate_steamuser_srm; then
